@@ -1,0 +1,25 @@
+version: '2.3'
+
+x-aws: &aws-env
+    environment:
+        - AWS_ACCESS_KEY_ID
+        - AWS_SECRET_ACCESS_KEY
+        - AWS_DEFAULT_REGION
+        - ENVIRONMENT=dev
+
+services:
+    main:
+        image: gptneox
+        build:
+          context: .
+          dockerfile: ./Dockerfile
+        runtime: nvidia
+        volumes:
+            - ./:/dataflow/
+        <<: *aws-env
+        ports:
+            - 8265:8265
+        stdin_open: true
+        tty: true
+        shm_size: '16gb'
+        command: bash -c "echo hub running && sleep infinity"

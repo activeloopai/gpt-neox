@@ -17,9 +17,11 @@ params = get_params(train_args.model)
 
 # tokenizer
 tokenizer = get_tokenizer(tokenizer_type=params["tokenizer"].get("type", None),
-                          from_pretrained=params["tokenizer"].get("from_pretrained", True),
+                          from_pretrained=params["tokenizer"].get(
+                              "from_pretrained", True),
                           add_padding_token=params["tokenizer"].get("add_padding_token", False))
-vocab_size = len(tokenizer) if params["vocab_size"] is None else params["vocab_size"]
+vocab_size = len(
+    tokenizer) if params["vocab_size"] is None else params["vocab_size"]
 
 # instantiate GPT-like decoder model
 params["seq_len"] = 1024
@@ -39,13 +41,14 @@ dset_params = params["dataset"]
 assert dset_params is not None
 
 deepspeed.init_distributed(dist_backend='nccl')
-torch.distributed.barrier()  # barrier will force processes to stop until *all* processes have reached the barrier
+# barrier will force processes to stop until *all* processes have reached the barrier
+torch.distributed.barrier()
 # if is_main(train_args):
 #     prepare_data(dset_params["name"])
 #     torch.distributed.barrier()  # barrier will force processes to stop until *all* processes have reached the barrier
 # else:
 #     torch.distributed.barrier()
-    
+
 train_dataset = get_hub_dataset()
 
 # train_dataset = GPT2Dataset(glob_pattern=dset_params["train_path"],
@@ -62,10 +65,10 @@ train_dataset = get_hub_dataset()
 # val_loader = iter(val_loader)
 
 # optimizer
-if train_args.local_rank == -1: # non-deepspeed
+if train_args.local_rank == -1:  # non-deepspeed
     optim = torch.optim.Adam(model.parameters(), lr=params["learning_rate"])
 else:
-    optim = None # deepspeed will prepare the optimizer for us
+    optim = None  # deepspeed will prepare the optimizer for us
 
 
 # training
@@ -79,7 +82,8 @@ model_engine, optim, train_loader, _ = deepspeed.initialize(args=train_args,
                                                             training_data=train_dataset)
 
 print("OPTIMIZER: ", optim)
-pbar = trange(params.get("train_steps", 1), mininterval=10., desc='Training Model', dynamic_ncols=True)
+pbar = trange(params.get("train_steps", 1), mininterval=10.,
+              desc='Training Model', dynamic_ncols=True)
 for _ in pbar:
     for i, data in enumerate(train_loader):
         if i > params["train_steps"]:

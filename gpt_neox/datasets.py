@@ -12,6 +12,7 @@ import subprocess
 import simdjson as json
 import hub
 
+
 class HubAdapter(torch.utils.data.Dataset):
     def __init__(self, ods):
         self.ds = ods
@@ -19,24 +20,27 @@ class HubAdapter(torch.utils.data.Dataset):
     @classmethod
     def __instancecheck__(cls, instance):
         return isinstance(instance, torch.utils.data.Dataset)
-        
+
     def __len__(self):
         return len(self.ds)
-    
+
 #     def __iter__(self):
 #         for i in range(len(self)):
 #             yield self[i]
-    
+
     def __getitem__(self, index):
         x = self.ds.__getitem__(index)
         return x['text'][:1024]
 
 
 def get_hub_dataset():
-    schema = hub.schema.SchemaDict({'text': hub.schema.Tensor(shape=(None,), dtype='int64', max_shape=(2049,))})
-    ds = hub.Dataset("snsi/pile_dev", schema=schema, shape=(100000,)).to_pytorch()
+    schema = hub.schema.SchemaDict({'text': hub.schema.Tensor(
+        shape=(None,), dtype='int64', max_shape=(2049,))})
+    ds = hub.Dataset("snsi/pile_dev", schema=schema,
+                     shape=(100000,)).to_pytorch()
 #     ds = hub.Dataset("interneuron/pile_train0", shape=(None,)).to_pytorch()
     return HubAdapter(ds)
+
 
 class GPT2Dataset(Dataset):
 
@@ -58,7 +62,8 @@ class GPT2Dataset(Dataset):
         if self.filetype not in implemented_filetypes:
             raise NotImplementedError
 
-        self.processed_files = FixedSizeOrderedDict(max=1)  # storage for lazily loading data
+        self.processed_files = FixedSizeOrderedDict(
+            max=1)  # storage for lazily loading data
 
         # parses the length of the files, either by encoding in the filenames or by iterating over them
         self._get_lens()
@@ -101,7 +106,7 @@ class GPT2Dataset(Dataset):
             lens.append(n_documents)
         self.lens = lens
         self._len = sum(self.lens)
-    
+
     def _parse_function(self, example_proto):
         features = {
             "text": tf.io.VarLenFeature(tf.int64)
@@ -117,7 +122,8 @@ class GPT2Dataset(Dataset):
 
     def _maybe_process_tfrecord(self, file_idx):
         if self.processed_files.get(file_idx) is None:
-            self.processed_files[file_idx] = list(self._process_tfrecord(self.files[file_idx]))
+            self.processed_files[file_idx] = list(
+                self._process_tfrecord(self.files[file_idx]))
         return self.processed_files[file_idx]
 
     def _seek(self, idx):
@@ -156,12 +162,14 @@ class TextSamplerDataset(Dataset):
         self.seq_len = seq_len
 
     def __getitem__(self, index):
-        rand_start = torch.randint(0, self.data.size(0) - self.seq_len - 1, (1,))
+        rand_start = torch.randint(
+            0, self.data.size(0) - self.seq_len - 1, (1,))
         full_seq = self.data[rand_start: rand_start + self.seq_len + 1].long()
         return full_seq
 
     def __len__(self):
         return self.data.size(0) // self.seq_len
+
 
 class DynamicDataset(Dataset):
     def __init__(self, input_files, tokenizer, max_seq_len, target_field='text', seed=1, shuffle_files=True, **kwargs):
@@ -192,17 +200,19 @@ class DynamicDataset(Dataset):
                     self.files.extend(glob.glob(file_path))
                 elif os.path.isdir(file_path):
                     self.files.extend(glob.glob(os.path.join(file_path, '*')))
-        
+
         self.total_files = len(self.files)
         self.file_idx, self.total_lines = {}, 0
         for file_path in self.files:
             total_lines = self.total_lines_in_file(file_path)
             self.file_idx[file_path] = total_lines
             self.total_lines += total_lines
-        logging.info(f'Total Files: {self.total_files}. Total Lines: {self.total_lines}')
-    
+        logging.info(
+            f'Total Files: {self.total_files}. Total Lines: {self.total_lines}')
+
     def create_pipeline(self):
-        self.pipeline = tf.data.TextLineDataset(self.files, num_parallel_reads=tf.data.experimental.AUTOTUNE).as_numpy_iterator()
+        self.pipeline = tf.data.TextLineDataset(
+            self.files, num_parallel_reads=tf.data.experimental.AUTOTUNE).as_numpy_iterator()
 
     def parse_json(self, line):
         try:
@@ -213,7 +223,7 @@ class DynamicDataset(Dataset):
     @classmethod
     def total_lines_in_file(cls, file_path):
         return int(subprocess.check_output(['wc', '-l', file_path]).split()[0])
-    
+
     def tokenize_example(self, ex):
         self.idx += 1
         return self.tokenizer(ex[self.target_field], max_length=self.max_seq_len, truncation=True, return_tensors='pt')['input_ids']
