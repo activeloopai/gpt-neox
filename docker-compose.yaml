@@ -15,7 +15,7 @@ services:
           dockerfile: ./Dockerfile
         runtime: nvidia
         volumes:
-            - ./:/dataflow/
+            - ./:/workspace/
         <<: *aws-env
         ports:
             - 8265:8265
